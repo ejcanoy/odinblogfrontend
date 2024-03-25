@@ -6,6 +6,7 @@ function Home() {
     useEffect(() => {
         async function fetchData() {
             try {
+                // replace the url to env
                 const response = await fetch('http://localhost:3000/post', { mode: 'cors' });
                 if (!response.ok) {
                     throw new Error('Network response was not ok');
