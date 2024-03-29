@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import parse from 'html-react-parser';
 
 function Home() {
     const [articles, setArticles] = useState([]);
@@ -31,7 +32,9 @@ function Home() {
                 {articles.map(article => (
                     <button className="w-[300px]  border-2 border-black" key={article._id}>
                         <h2>{article.title}</h2>
-                        <p>{article.message}</p>
+                        <div>
+                        {parse(article.message)}
+                        </div>
                         <p>Date: {article.date}</p>
                     </button>
                 ))}

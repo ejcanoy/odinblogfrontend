@@ -1,6 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
-import Modal from "./modal";
+import { Editor } from '@tinymce/tinymce-react';
+import parse from 'html-react-parser'
+
+
 
 
 function BlogDashboard() {
@@ -10,6 +13,12 @@ function BlogDashboard() {
     const [modalTitle, setModalTitle] = useState("");
     const [modalDate, setModalDate] = useState("");
     const [deleteArticleID, setDeleteArticleID] = useState(null);
+
+    const [newArticleTitle, setNewArticleTitle] = useState("");
+    const [publish, setPublish] = useState(false);
+    const [articleMessage, setArticleMessage] = useState("");
+    const editorRef = useRef(null);
+
 
     useEffect(() => {
         fetchData();
@@ -23,17 +32,94 @@ function BlogDashboard() {
                 throw new Error('Network response was not ok');
             }
             const data = await response.json();
-            console.log(data);
-            const publishedArticles = data.filter((article) => article.published);
-            setArticles(publishedArticles);
+            setArticles(data);
         } catch (error) {
             console.error('Error fetching data:', error);
         }
     }
 
-    async function deletePost(_id) {
-        // add check if you actually want to delete, if not then skip else continue;
+    async function createPost(message) {
+        const body = JSON.stringify({
+            title: newArticleTitle,
+            message: message,
+            published: publish,
+        });
 
+        try {
+            const response = await fetch('http://localhost:3000/post/', {
+                mode: 'cors',
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: body
+            })
+            console.log(response);
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+
+        } catch (error) {
+            console.error('Error posting data:', error);
+        }
+    }
+
+    async function updatePost(updatedMessage) {
+        const body = {};
+        if (newArticleTitle !== "") {
+            body.title = newArticleTitle
+        }
+
+        body.message = updatedMessage;
+
+        body.published = publish;
+        try {
+            const response = await fetch(`http://localhost:3000/post/${deleteArticleID}`,
+                {
+                    mode: 'cors',
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(body)
+                }
+            )
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+        } catch (error) {
+            console.error('Error updating the post', error);
+        }
+    }
+
+    function clearFields() {
+        setNewArticleTitle("");
+        setPublish(false);
+        setArticleMessage("");
+        setDeleteArticleID(null);
+    }
+
+    async function log() {
+        if (editorRef.current) {
+            try {
+                if (!deleteArticleID) {
+                    await createPost(editorRef.current.getContent());
+                } else {
+                    await updatePost(editorRef.current.getContent());
+                }
+                clearFields();
+                await fetchData();
+                setNewArticle(false);
+
+            } catch (error) {
+                console.error('Error posting data:', error);
+            }
+        } else {
+            alert("Enter text into message box")
+        }
+    }
+
+    async function deletePost(_id) {
         try {
             const response = await fetch(`http://localhost:3000/post/${_id}`, {
                 mode: 'cors',
@@ -59,6 +145,14 @@ function BlogDashboard() {
         setShowModal(true);
     }
 
+    function handleEditClick(title, id, published, message){
+        setNewArticleTitle(title);
+        setDeleteArticleID(id);
+        setArticleMessage(message);
+        setNewArticle(true);
+        setPublish(published);
+    }
+
     return (
         <>
             <Link className="border-2 border-black" to="/">Home</ Link>
@@ -71,17 +165,60 @@ function BlogDashboard() {
                     <button className="border-2 border-black" onClick={() => setNewArticle(false)}>Back</button>
                 }
             </div>
+            {
+                newArticle &&
+                <div className="grid justify-center m-16 gap-5">
+                    <>
+                        <div>
+                            <h3>title</h3>
+                            <input className="border-black border-2" type="text" value={newArticleTitle} onChange={(event) => setNewArticleTitle(event.target.value)} />
+                            <h3>publish</h3>
+                            <input
+                                type="checkbox"
+                                checked={publish}
+                                onChange={(event) => setPublish(event.target.checked)}
+                            />
+                        </div>
+                        <div>
+                            <Editor
+                                apiKey='6cep4bxq01fphrkscjzsbh6mnimta7n2f2f7ntupjmsgsiq5'
+                                onInit={(evt, editor) => editorRef.current = editor}
+                                initialValue={articleMessage === "" ? "<p></p>" : `${articleMessage}`}
+                                init={{
+                                    height: 500,
+                                    menubar: false,
+                                    plugins: [
+                                        'advlist', 'autolink', 'lists', 'link', 'image', 'charmap', 'preview',
+                                        'anchor', 'searchreplace', 'visualblocks', 'code', 'fullscreen',
+                                        'insertdatetime', 'media', 'table', 'code', 'help', 'wordcount'
+                                    ],
+                                    toolbar: 'undo redo | blocks | ' +
+                                        'bold italic forecolor | alignleft aligncenter ' +
+                                        'alignright alignjustify | bullist numlist outdent indent | ' +
+                                        'removeformat | help',
+                                    content_style: 'body { font-family:Helvetica,Arial,sans-serif; font-size:14px }'
+                                }}
+                            />
+                            <button className="border-2 border-black" onClick={log}>Save Post</button>
+                        </div>
+                    </>
+
+                </div>
+
+            }
             {!newArticle &&
                 <div className="flex flex-wrap justify-between m-16 gap-5">
                     {/* make its own CARD */}
                     {articles.map(article => (
                         <div className="w-[300px]  border-2 border-black" key={article._id}>
                             <h2>{article.title}</h2>
-                            <p>{article.message}</p>
+                            <div>
+                                {parse(article.message)}
+                            </div>
                             <p>Date: {article.date}</p>
-
+                            {article.published ? <p>Published</p> : <p>Not published</p>}
                             <div className="flex justify-end gap-2 ml-1">
-                                <button className="border-2 border-green-900">edit</button>
+                                <button className="border-2 border-green-900" type="button" onClick={() => handleEditClick(article.title, article._id, article.published, article.message)}>edit</button>
                                 <button
                                     className="border-red-800 border-2"
                                     type="button"
