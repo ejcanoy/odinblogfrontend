@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import parse from 'html-react-parser';
+import { Link } from "react-router-dom";
 
 function Home() {
     const [articles, setArticles] = useState([]);
@@ -30,13 +31,13 @@ function Home() {
             <div className="flex flex-wrap justify-between m-16 gap-5">
                 {/* make its own CARD */}
                 {articles.map(article => (
-                    <button className="w-[300px]  border-2 border-black" key={article._id}>
+                    <Link className="w-[300px]  border-2 border-black" key={article._id} to={`/post/${article._id}`}>
                         <h2>{article.title}</h2>
                         <div>
                         {parse(article.message)}
                         </div>
                         <p>Date: {article.date}</p>
-                    </button>
+                    </ Link>
                 ))}
             </div>
         </>
