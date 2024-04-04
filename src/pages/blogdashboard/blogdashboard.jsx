@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Editor } from '@tinymce/tinymce-react';
 import parse from 'html-react-parser'
 
@@ -18,11 +18,31 @@ function BlogDashboard() {
     const [publish, setPublish] = useState(false);
     const [articleMessage, setArticleMessage] = useState("");
     const editorRef = useRef(null);
+    const navigate = useNavigate();
 
 
     useEffect(() => {
+        async function checkUser() {
+            try {
+                const response = await fetch('http://localhost:3000/auth/user', {
+                    mode: 'cors',
+                    method: 'GET',
+                    headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                });
+                if (!response.ok) {
+                    // please fix this later lol
+                    navigate("/login");
+                }
+            } catch (error) {
+                console.error('Error fetching data:', error);
+            }
+        }
+
+
+        checkUser()
         fetchData();
-    }, [])
+    }, [navigate])
+
 
     async function fetchData() {
         try {
@@ -145,7 +165,7 @@ function BlogDashboard() {
         setShowModal(true);
     }
 
-    function handleEditClick(title, id, published, message){
+    function handleEditClick(title, id, published, message) {
         setNewArticleTitle(title);
         setDeleteArticleID(id);
         setArticleMessage(message);
